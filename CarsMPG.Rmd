@@ -1,0 +1,38 @@
+---
+title: "Cars MPG Analysis"
+author: "Amade A."
+date: "December 25, 2015"
+output: pdf_document
+---
+
+# Executive summary
+
+This paper analyzes the influence of varios car characteristics on fuel economy (measured as miles per galon of fuel). 
+
+# Exploratory Data Analysis
+
+# Formal modelling
+
+## Simple model (automatic/manual only)
+
+## Inclusion of possible confounding variables
+
+## Best model selection
+
+Here perform a likelihood ratio test
+
+# Uncertainty measures
+
+## Analysis of residuals
+
+Here plot the residuals
+
+## Confidence intervals for predictor variables
+
+Specify here the confidence intervals for those variables
+
+# Conclusions and interpretation
+
+Interpret the outcome of the model
+
+
