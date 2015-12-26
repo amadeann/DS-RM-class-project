@@ -63,8 +63,6 @@ p
 
 It can be easily seen, that the fuel efficiency is not the same among the cars with different transmission types, which means that *am* variable is a good candidate for independent regression variable.  Median MPG for cars with automatic transmission equals **`r median(mtcars$mpg[mtcars$am == "automatic"])`** and for the ones with manual **`r median(mtcars$mpg[mtcars$am == "manual"])`**. Values seem to be more concentrated around the median in the case of automatic transmission, compared to cars with manual transmission. Standard deviations of MPG value for two groups equaled respectively **`r sd(mtcars$mpg[mtcars$am == "automatic"])`** and **`r sd(mtcars$mpg[mtcars$am == "manual"])`**.
 
-**IF TIME PERMITS, I CAN INCLUDE HERE BOXPLOTS AND SCATTER PLOTS FOR ADDITIONAL VARIABLES**
-
 # Formal modelling
 
 ## Simple model (automatic/manual only)
@@ -84,10 +82,61 @@ P value for *`r dimnames(summary(fit)$coef)[[1]][2]`* coefficient is very close 
 
 $R^2$ of the model equaled `r summary(fit)$r.squared`, meaning that `r round(summary(fit)$r.squared*100,0)`% of the variation in MPG is explained by the regression model. 
 
-## Inclusion of possible confounding variables
+## Inclusion of additional variable
+
+Since the value of R square coefficient is relatively low (`r summary(fit)$r.squared`) it is quite likely that there are other variables, which can help in explaining the variation in MPG.
+
+Additional variables to the model can be determined by looking at the absolute value of correlation of numeric variables with *mpg* variable.
+
+```{r mpg_abs_cor}
+with(mtcars, data.frame(
+    absoluteCorrelation = round(c(abs(cor(mpg,disp)), abs(cor(mpg,hp)), abs(cor(mpg,drat)),
+        abs(cor(mpg,wt)),abs(cor(mpg,qsec))),2),
+    row.names = c("disp", "hp", "drat", "wt", "qsec")
+    )
+)
+```
+
+Two most higly correlated variables with *mpg* variable are *wt* and *disp* variables, referring respectively to automobile's weight (in 1000lbs) and engine displacement (in cu.in.).
+
+### Model wtih including automobile's weight
+
+Following code fits the linear model using *am* and *wt* variables.
+
+```{r model_am_wt}
+fit2 <- lm(mpg ~ am + wt, data = mtcars)
+summary(fit2)$coef
+summary(fit2)$r.square
+```
+
+As a result of including the weight variable to the model, *am* variable lost its explanatory power. Its value of `r coef(fit2)[2]` is very close to 0. Such low value of coefficient would indicate that the mean MPG for cars with manual transmission is lower by `r coef(fit2)[2]` compared to cars with automatic transmission. The p value of `r summary(fit2)$coef[2,4]` doesn't allow us to reject the null hypothesis of no differences in mean MPG between cars with automatic and manual transmission at any conventional conficenve level.
+
+It can be therefore concluded that the regression model with both *am* and *wt* variables is not appropriate for answering the question of impact of transmission type on automobile's fuel efficiency.
+
+### Model wtih including engine displacement
+
+The following code fits the model using *am* and *disp* variables. *disp* variable measures the engine displacement.
+
+```{r model_am_disp}
+fit3 <- lm(mpg ~ am + disp, data = mtcars)
+summary(fit3)$coef
+summary(fit3)$r.square
+```
+
+Also in the case of this model, the p value of `r summary(fit)$coef[2,4]` for coefficient *`r dimnames(summary(fit3)$coef)[[1]][2]`* indicates that it has no significant effect on exaplaining variation in MPG. Therefore, despite relatively large $R^2$ value of `r summary(fit3)$r.square`, this model is also not appropriate for explaining the impact of transmission type on automobile's MPG.
+
+```{r fit_model_chart, fig.height = 3.5, fig.width = 3.5}
+g <- ggplot(data = mtcars, aes(x = wt, y = mpg, colour = am))
+g <- g + geom_point(size = 6, colour = "black") + geom_point(size = 4)
+g <- g + geom_abline(intercept = coef(fit2)[1], slope = coef(fit2)[3], size = 2)
+g <- g + geom_abline(intercept = coef(fit2)[1] + coef(fit2)[2], slope = coef(fit2)[3], size = 2)
+g <- g + xlab("automobile's weight") + ylab("MPG")
+g
+```
 
 ## Best model selection
 
+The most important criterion for model selection is that it must allow us to see the impact of transmission type on MPG. Therefore, such model should include *am* variable.
 Here perform a likelihood ratio test
 
 # Uncertainty measures
