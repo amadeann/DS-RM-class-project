@@ -4,13 +4,63 @@ author: "Amade A."
 date: "December 25, 2015"
 output: pdf_document
 ---
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F, results='hide'}
+library(knitr) # package load has to be included, otherwise, knitr returns error
+options(width = 100)
+opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
 
-# Executive summary
+options(xtable.type = 'html')
+knit_hooks$set(inline = function(x) {
+  if(is.numeric(x)) {
+    round(x, getOption('digits'))
+  } else {
+    paste(as.character(x), collapse = ', ')
+  }
+})
+# not sure what the purpose of the chunk below is
+# knit_hooks$set(plot = knitr:::hook_plot_html)
+runif(1)
+```
+# Overview
 
-This paper analyzes the influence of varios car characteristics on fuel economy (measured as miles per galon of fuel). 
+## Research objective
+
+The objective of this paper is answering the question whether automatic transmission is better for MPG compared to manual transmission. In addition, the researcher also aims to quantify the difference in MPG between cars with different types of transmission.
+
+## Executive summary
+
+This paper analyzes the influence of various car characteristics on fuel economy (measured as miles per galon of fuel). 
 
 # Exploratory Data Analysis
 
+## Dataset
+
+Dataset used for the analysis is **mtcars** dataset, preloaded in R in the *datasets* package. Data originates from the 1974 Motor Trend US magazine, measuring fuel consumption across 10 automobile design aspects for 32 automobiles.
+
+Among the 10 variables, 5 (cyl, vs, am, gear, carb) can be characterized as discrete (factor) variables and remaining 5 (disp, hp, drat, wt, qsec), continuous (numeric) variables. Fuel consumption is represented by the continuous *mpg* variable.
+
+For easier interpretation, variable specifying the transmission type - *am* was recoded, so that the factor levels have straightworward internpretation.
+
+```{r, echo = TRUE}
+library(dplyr, warn.conflicts = FALSE)
+mtcars <- mtcars %>%
+mutate(am = factor(am, levels = c(0,1), labels = c("automatic", "manual")))
+```
+
+## MPG by transmission type
+
+In total, there were `r sum(mtcars$am == "automatic")` cars with automatic transmission and `r sum(mtcars$am == "manual")` with manual.
+The following graph shows the differences in measured fuel efficiency among cars with different transmission types.
+
+```{r MPG_by_transmission_type, echo = TRUE, fig.height = 4, fig.width=4}
+library(ggplot2)
+p <- ggplot(mtcars, aes(factor(am), mpg))
+p <- p + geom_boxplot()
+p <- p + ggtitle("MPG by transmission type") + xlab("Transmission type") + ylab("MPG")
+p
+```
+
+It can be easily seen, that the fuel efficiency is not the same among the cars with different transmission types. 
 # Formal modelling
 
 ## Simple model (automatic/manual only)
