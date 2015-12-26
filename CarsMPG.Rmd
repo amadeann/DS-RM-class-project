@@ -7,12 +7,13 @@ output: pdf_document
 ```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F, results='hide'}
 library(knitr) # package load has to be included, otherwise, knitr returns error
 options(width = 100)
-opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
+opts_chunk$set(echo = TRUE, message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
 
 options(xtable.type = 'html')
 knit_hooks$set(inline = function(x) {
   if(is.numeric(x)) {
-    round(x, getOption('digits'))
+    round(x, 2) # changed rounding option to 2 digits, by default was :
+      # round(x, getOption('digits'))
   } else {
     paste(as.character(x), collapse = ', ')
   }
@@ -52,18 +53,36 @@ mutate(am = factor(am, levels = c(0,1), labels = c("automatic", "manual")))
 In total, there were `r sum(mtcars$am == "automatic")` cars with automatic transmission and `r sum(mtcars$am == "manual")` with manual.
 The following graph shows the differences in measured fuel efficiency among cars with different transmission types.
 
-```{r MPG_by_transmission_type, echo = TRUE, fig.height = 4, fig.width=4}
+```{r MPG_by_transmission_type, echo = TRUE, fig.height = 3.5, fig.width = 3.5}
 library(ggplot2)
-p <- ggplot(mtcars, aes(factor(am), mpg))
+p <- ggplot(mtcars, aes(am, mpg))
 p <- p + geom_boxplot()
 p <- p + ggtitle("MPG by transmission type") + xlab("Transmission type") + ylab("MPG")
 p
 ```
 
-It can be easily seen, that the fuel efficiency is not the same among the cars with different transmission types. 
+It can be easily seen, that the fuel efficiency is not the same among the cars with different transmission types, which means that *am* variable is a good candidate for independent regression variable.  Median MPG for cars with automatic transmission equals **`r median(mtcars$mpg[mtcars$am == "automatic"])`** and for the ones with manual **`r median(mtcars$mpg[mtcars$am == "manual"])`**. Values seem to be more concentrated around the median in the case of automatic transmission, compared to cars with manual transmission. Standard deviations of MPG value for two groups equaled respectively **`r sd(mtcars$mpg[mtcars$am == "automatic"])`** and **`r sd(mtcars$mpg[mtcars$am == "manual"])`**.
+
+**IF TIME PERMITS, I CAN INCLUDE HERE BOXPLOTS AND SCATTER PLOTS FOR ADDITIONAL VARIABLES**
+
 # Formal modelling
 
 ## Simple model (automatic/manual only)
+
+As a first step in modeling a simple linear model with one binary variable *am* was fitted. Parameters of the regression are summarized below.
+
+```{r simple_model}
+fit <- lm(mpg ~ am, data = mtcars)
+summary(fit)$coef
+```
+
+Since the model has only one binary variable *am*, the intercept is interpreted as predicted value of MPG for the base level of *am* variable, which in **mtcars** dataset is "automatic transmission". Value of `r summary(fit)$coef[1]` informs us that cars with automatic transmission are expected to reach `r summary(fit)$coef[1]` miles for each galon of fuel. This value is also the average MPG value for cars with automatic transmission.
+
+Change in MPG value for cars with manual transmission is represented by *`r dimnames(summary(fit)$coef)[[1]][2]`* coefficient. Value of `r summary(fit)$coef[2]` tells us that the expected (average) MPG for cars with manual transmission is `r summary(fit)$coef[2]` higher compared to cars with automatic transmission.
+
+P value for *`r dimnames(summary(fit)$coef)[[1]][2]`* coefficient is very close to 0, informing us that the mean MPG range is significantly different for cars with different transmission type even at 99.9% confidence level.
+
+$R^2$ of the model equaled `r summary(fit)$r.squared`, meaning that `r round(summary(fit)$r.squared*100,0)`% of the variation in MPG is explained by the regression model. 
 
 ## Inclusion of possible confounding variables
 
