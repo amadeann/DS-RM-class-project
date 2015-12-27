@@ -3,6 +3,7 @@ title: "Comparison of fuel efficiency between cars with automatic and manual tra
 author: "Amade A."
 date: "December 25, 2015"
 output: pdf_document
+geometry: margin=1.3cm
 ---
 ```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F, results='hide'}
 library(knitr) # package load has to be included, otherwise, knitr returns error
@@ -27,20 +28,14 @@ library(lmtest)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 ```
-# Overview
-
-## Research objective
-
-The objective of this paper is answering the question whether automatic transmission is better for MPG compared to manual transmission. In addition, the researcher also aims to quantify the difference in MPG between cars with different types of transmission.
-
 ## Executive summary
 
 This paper analyzes the influence of various car characteristics on fuel economy (measured as miles per galon of fuel). In the process of analysis 4 different linear models were fitted. They were: a simple linear model with one binary variable representing transmission type and 3 models with one additional numeric variable - *wt* (automobile's weight), *disp* (engine displacement) and *hp* (automobile's horsepower).  
 Based on the criterium of significance of *am* (transmission type) variable and best explanatory power, tested with likelihood ratio test, the model with 2 variables - *am* and *hp* was chosen. **The model indicates that the cars with manual transmission have better fuel efficiency (higher average MPG). The difference in fuel efficiency between the cars with manual and automatic transmission is *5.27* MPG**.
 
-# Exploratory Data Analysis
+## Research objective and exploratory data analysis
 
-## Dataset
+The objective of this paper is answering the question whether automatic transmission is better for MPG compared to manual transmission. In addition, the researcher also aims to quantify the difference in MPG between cars with different types of transmission.
 
 Dataset used for the analysis is **mtcars** dataset, preloaded in R in the *datasets* package. Among the 10 variables, 5 (cyl, vs, am, gear, carb) can be characterized as discrete (factor) variables and remaining 5 (disp, hp, drat, wt, qsec), continuous (numeric) variables. Fuel consumption is represented by the continuous *mpg* variable.
 
@@ -49,70 +44,58 @@ mtcars <- mtcars %>%
 mutate(am = factor(am, levels = c(0,1), labels = c("automatic", "manual")))
 ```
 
-## MPG by transmission type
-
 In total, there were `r sum(mtcars$am == "automatic")` cars with automatic transmission and `r sum(mtcars$am == "manual")` with manual.
-**Graph 1** (see Appendix) shows the differences in measured fuel efficiency among cars with different transmission types.
+**Graph 1** (see Appendix) shows the differences in measured fuel efficiency among cars with different transmission types. Median MPG for cars with automatic transmission equals **`r median(mtcars$mpg[mtcars$am == "automatic"])`** and for the ones with manual **`r median(mtcars$mpg[mtcars$am == "manual"])`**. Values seem to be more concentrated around the median in the case of automatic transmission, compared to cars with manual transmission. Standard deviations of MPG value for two groups equaled respectively **`r sd(mtcars$mpg[mtcars$am == "automatic"])`** and **`r sd(mtcars$mpg[mtcars$am == "manual"])`**.
 
-It can be easily seen that the fuel efficiency is not the same among the cars with different transmission types, which means that *am* variable is a good candidate for independent regression variable.  Median MPG for cars with automatic transmission equals **`r median(mtcars$mpg[mtcars$am == "automatic"])`** and for the ones with manual **`r median(mtcars$mpg[mtcars$am == "manual"])`**. Values seem to be more concentrated around the median in the case of automatic transmission, compared to cars with manual transmission. Standard deviations of MPG value for two groups equaled respectively **`r sd(mtcars$mpg[mtcars$am == "automatic"])`** and **`r sd(mtcars$mpg[mtcars$am == "manual"])`**.
+## Formal modelling
 
-# Formal modelling
-
-## Simple model
-
-As a first step in modeling a simple linear model with one binary variable *am* was fitted. Parameters of the regression are summarized below.
+### Simple model with one explanatory variable (fit)
 
 ```{r simple_model, echo = FALSE}
 fit <- lm(mpg ~ am, data = mtcars)
 summary(fit)$coef
 ```
 
-Since the model has only one binary variable *am*, the intercept is interpreted as predicted value of MPG for the base level of *am* variable, which in **mtcars** dataset is "automatic transmission". Value of `r summary(fit)$coef[1]` informs us that cars with automatic transmission are expected to reach `r summary(fit)$coef[1]` miles for each galon of fuel. This value is also the average MPG value for cars with automatic transmission.
+Since the model has only one binary variable *am*, the intercept is interpreted as predicted value of MPG for the base level of *am* variable, which in **mtcars** dataset is "automatic transmission". Value of `r summary(fit)$coef[1]` informs us that cars with automatic transmission are expected to go on average `r summary(fit)$coef[1]` miles for each galon of fuel.
 
 Change in MPG value for cars with manual transmission is represented by *`r dimnames(summary(fit)$coef)[[1]][2]`* coefficient. Value of `r summary(fit)$coef[2]` tells us that the expected (average) MPG for cars with manual transmission is `r summary(fit)$coef[2]` higher compared to cars with automatic transmission.
 
 P value for *`r dimnames(summary(fit)$coef)[[1]][2]`* coefficient is very close to 0, informing us that the mean MPG range is significantly different for cars with different transmission types even at 99.9% confidence level. $R^2$ of the model equaled `r summary(fit)$r.squared`, meaning that `r round(summary(fit)$r.squared*100,0)`% of the variation in MPG is explained by the regression model. 
 
-## Inclusion of additional variable
+### Inclusion of additional variable
 
-Since the value of R square coefficient is relatively low (`r summary(fit)$r.squared`) it is quite likely that there are other variables, which can help in explaining the variation in MPG. Additional variables to the model can be determined by looking at the absolute value of correlation of numeric variables with *mpg* variable.
+Since the value of R square coefficient is relatively low (`r summary(fit)$r.squared`) it is quite likely that there are other variables, which can help in explaining the variation in MPG. Additional variables to the model can be determined by looking at the absolute value of correlation of numeric variables with *mpg* variable (most correlated will be added to simple model).
 
 ```{r mpg_abs_cor, echo = FALSE}
-with(mtcars, data.frame(
+t(with(mtcars, data.frame(
     absoluteCorrelation = round(c(abs(cor(mpg,disp)), abs(cor(mpg,hp)), abs(cor(mpg,drat)),
         abs(cor(mpg,wt)),abs(cor(mpg,qsec))),2),
     row.names = c("disp", "hp", "drat", "wt", "qsec")
     )
-)
+))
 ```
 
-Two most higly correlated variables with *mpg* variable are *wt* and *disp* variables, referring respectively to automobile's weight (in 1000lbs) and engine displacement (in cu.in.).
-
-### Model including automobile's weight
+#### Model including automobile's weight (fit2)
 
 ```{r model_am_wt, echo = FALSE}
 fit2 <- lm(mpg ~ am + wt, data = mtcars)
-summary(fit2)$coef
+t(summary(fit2)$coef)[1,]
 # summary(fit2)$r.square
 ```
 
-As a result of including the weight variable to the model, *am* variable lost its explanatory power. Its value of `r coef(fit2)[2]` is very close to 0. Such low value of coefficient would indicate that the mean MPG for cars with manual transmission is lower by `r coef(fit2)[2]` compared to cars with automatic transmission. The p value of `r summary(fit2)$coef[2,4]` doesn't allow us to reject the null hypothesis of no differences in mean MPG between cars with automatic and manual transmission at any conventional conficenve level.
+As a result of including the weight variable to the model, *am* variable lost its explanatory power. Its value of `r coef(fit2)[2]` is very close to 0. The p value of `r summary(fit2)$coef[2,4]` doesn't allow us to reject the null hypothesis of no differences in mean MPG between cars with automatic and manual transmission at any conventional conficenve level. It can be therefore concluded that this model is not appropriate for answering the question of transmission's type impact on MPG.
 
-It can be therefore concluded that the regression model with both *am* and *wt* variables is not appropriate for answering the question of impact of transmission type on automobile's fuel efficiency.
-
-### Model including engine displacement
+#### Model including engine displacement (fit3)
 
 ```{r model_am_disp, echo = FALSE}
 fit3 <- lm(mpg ~ am + disp, data = mtcars)
-summary(fit3)$coef
+t(summary(fit3)$coef)[1,]
 # summary(fit3)$r.square
 ```
 
 Also in the case of this model, the p value of `r summary(fit3)$coef[2,4]` for coefficient *`r dimnames(summary(fit3)$coef)[[1]][2]`* indicates that it has no significant effect on exaplaining variation in MPG. Therefore, despite relatively large $R^2$ value of `r summary(fit3)$r.square`, this model is also not appropriate for explaining the impact of transmission type on automobile's MPG.
 
-### Model with the engine horsepower
-
-Third most correlated with the *mpg* variable was *hp* variable representing the horsepower of the engine. 
+#### Model with the engine horsepower (fit4)
 
 ```{r model_am_hp, echo = FALSE}
 fit4 <- lm(mpg ~ am + hp, data = mtcars)
@@ -120,45 +103,36 @@ summary(fit4)$coef
 # summary(fit4)$r.square
 ```
 
-P value of the `r dimnames(summary(fit4)$coef)[[1]][2]` coefficient is very close to 0, indicating that there are statistically significant differences between mean MPG among cars with manual and automatic transmissions. Also the value of this coefficient at `r summary(fit4)$coef[2,1]` is of the satisfactory order of magnitude is comparing the differences in mean MPG (MPG is higher by `r summary(fit4)$coef[2,1]` for cars with manual transmission). P value for for the *hp* variable coefficient is also close to zero indicating that the coefficient is significantly different than 0. Its value of `r summary(fit4)$coef[3,1]` mean that for each additional horsepower, the MPG of the car decreases by `r summary(fit4)$coef[2,1]`. $R^2$ for this model equals `r summary(fit4)$r.square`.
+P value of the *`r dimnames(summary(fit4)$coef)[[1]][2]`* coefficient is very close to 0, indicating statistically significant differences in mean MPG among cars with manual and automatic transmissions. Also the value of this coefficient at `r summary(fit4)$coef[2,1]` is of the satisfactory order of magnitude for comparing the differences in mean MPG (MPG is higher by `r summary(fit4)$coef[2,1]` for cars with manual transmission). P value for for the *hp* coefficient is also close to zero indicating the coefficient significantly different from 0. Its value of `r summary(fit4)$coef[3,1]` mean that for each additional horsepower, the MPG of the car decreases by `r summary(fit4)$coef[2,1]`. 
 
-```{r fit_model_chart, echo = FALSE, fig.height = 3.5, fig.width = 3.5}
-# g <- ggplot(data = mtcars, aes(x = wt, y = mpg, colour = am))
-# g <- g + geom_point(size = 6, colour = "black") + geom_point(size = 4)
-# g <- g + geom_abline(intercept = coef(fit2)[1], slope = coef(fit2)[3], size = 2)
-# g <- g + geom_abline(intercept = coef(fit2)[1] + coef(fit2)[2], slope = coef(fit2)[3], size = 2)
-# g <- g + xlab("automobile's weight") + ylab("MPG")
-# g
-```
+### Best model selection
 
-## Best model selection
-
-The most important criterion for model selection is that it must allow us to see the impact of transmission type on MPG. Therefore, such model should include *am* variable. Among the models presented above, only two of them included that variable - a simple model with one explanatory variable *am* (fit) and a model with two variables - *am* and *hp* (fit4).
+The most important criterion for model selection is that it must allow us to see the impact of transmission type on MPG. Therefore, in such model variable *am* should be statistically significant. Among the models presented above, only two of them met that condition - a simple model with one explanatory variable *am* (fit) and a model with two variables - *am* and *hp* (fit4).
 Those two models will be subjected to likelihood ratio test in order to determine whether the inclusion of additional variable - *hp* significantly improves the explanatory power of the model.
 
 Test performed with the *lrtest* function from the *lmtest* package returned Chi-square statistic of `r lrtest(fit,fit4)$Chisq[2]`. In the Chi-square distribution with 1 degree of freedom its p value is marginally close to 0 indicating that the null hypothesis that the model with 2 explanatory variables (fit4) does not offer significantly better goodness of fit compared to the model with 1 explanatory variable (fit) can be rejected at any conventional significance level (e.g. 95%). Therefore, it can be concluded that the best model for the purpose of this investigation is model *fit4* with 2 explanatory variables - *am* and *hp*.
 
-# Analysis of residuals
+## Analysis of residuals
 
 As can be seen in **Graph 2** (Appendix), the absolute value of residual values tends to be higher for lower values of *hp* variable, especially for the cars with manual transmission. This implicates that the assumption of homoschedasticity in residuals may not be held true. 
 
-# Conclusions and interpretation
+## Conclusions and interpretation
 
-Untimately the model with 2 explanatory variables - *am* and *hp* was chosen. The intercept in this model equaled `r summary(fit4)$coef[1,1]`. It can be interpreted as the MPG value for cars with automatic transmission and 0 horsepower (only theoretical concept). Coefficient *`r dimnames(summary(fit4)$coef)[[1]][2]`* of `r summary(fit4)$coef[2,1]` indicates that **cars with manual transmission have on average MPG measure higher by `r summary(fit4)$coef[1,1]`**. Last coefficient *`r dimnames(summary(fit4)$coef)[[1]][3]`* with the value of `r summary(fit4)$coef[3,1]` represents the decrease in MPG measure for each additional horsepower.
+Ultimately the model with 2 explanatory variables - *am* and *hp* was chosen. The intercept in this model equaled `r summary(fit4)$coef[1,1]`, being interpreted as the MPG value for cars with automatic transmission and 0 horsepower. Coefficient *`r dimnames(summary(fit4)$coef)[[1]][2]`* of `r summary(fit4)$coef[2,1]` indicates that **cars with manual transmission have on average MPG measure higher by `r summary(fit4)$coef[1,1]`**. Last coefficient *`r dimnames(summary(fit4)$coef)[[1]][3]`* with the value of `r summary(fit4)$coef[3,1]` represents the decrease in MPG measure for each additional horsepower.
 
-All of the coefficients had their p values marginally close to 0. In the case of *`r dimnames(summary(fit4)$coef)[[1]][1]`* and *`r dimnames(summary(fit4)$coef)[[1]][3]`* coefficients it mean that they are significantly different than 0. I the case of *`r dimnames(summary(fit4)$coef)[[1]][2]`* p value close to 0 indicates that the average MPG value is significantly different between cars with manual and automatic transmission.
-
-95% confidende intervals for coeffitient values are summarized below.
+All of the coefficients had their p values marginally close to 0. In the case of *`r dimnames(summary(fit4)$coef)[[1]][1]`* and *`r dimnames(summary(fit4)$coef)[[1]][3]`* coefficients it mean that they are significantly different than 0. In the case of *`r dimnames(summary(fit4)$coef)[[1]][2]`* p value close to 0 indicates that the average MPG value is significantly different between cars with manual and automatic transmission.
 
 ```{r coef_conf_int, echo = FALSE}
 confint(fit4, dimnames(summary(fit4)$coef)[[1]])
 ```
 
-These conficende intervals can be interpreted as a range of values in which there is a 95% confidence that the true value of a coefficient lies between them. E.g. we can state that there is 95% confidence that the true value of *ammanual* coefficient lies between `r confint(fit4, dimnames(summary(fit4)$coef)[[1]])[2,1]` and `r confint(fit4, dimnames(summary(fit4)$coef)[[1]])[2,2]`.
+95% confidence intervals summarized above are interpreted as a range of values for which there is a 95% confidence that the true value of a coefficient lies between them. E.g. we can state that there is 95% confidence that the true value of *ammanual* coefficient lies between `r confint(fit4, dimnames(summary(fit4)$coef)[[1]])[2,1]` and `r confint(fit4, dimnames(summary(fit4)$coef)[[1]])[2,2]`.
 
-# Appendix
+$R^2$ for the final model equals `r summary(fit4)$r.square`, meaning that the model explains `r summary(fit4)$r.square*100`% of variation in MPG between cars.
 
-## Graph 1 - MPG by transmission type
+## Appendix
+
+### Graph 1
 
 ```{r MPG_by_transmission_type, echo = FALSE, fig.height = 4, fig.width = 4}
 p <- ggplot(mtcars, aes(am, mpg))
@@ -167,7 +141,7 @@ p <- p + ggtitle("MPG by transmission type") + xlab("Transmission type") + ylab(
 p
 ```
 
-## Graph 2 - Horsepower and transmission type vs. residuals
+### Graph 2
 
 ```{r residual_fit4, echo = FALSE, fig.height=4, fig.width=6}
 g <- ggplot(data.frame(x = mtcars$hp, y = resid(fit4), transmission = mtcars$am), 
